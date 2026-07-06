@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Data (large, downloaded — not committed)
+data/raw/
+data/processed/
+
+# Models (large binaries — not committed)
+*.pt
+*.tflite
+*.mlpackage
+*.mlmodel
+*.onnx
+*.engine
+models/*
+!models/.gitkeep
+
+# Logs / experiment outputs
+logs/*.log
+runs/
+wandb/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Claude Code runtime state
+.claude/

@@ -1,0 +1,20 @@
+# Core training / inference
+ultralytics>=8.3.0        # YOLO26 / YOLOv8n-seg training, export
+opencv-python>=4.10.0
+numpy>=1.26,<2.0
+Pillow>=10.0
+
+# Export targets (Phase 0 benchmark)
+onnx>=1.16
+onnxruntime>=1.19
+tensorflow>=2.16          # needed by ultralytics for TFLite export
+coremltools>=8.0          # macOS only — CoreML export for iOS
+
+# Dataset handling / annotation conversion
+pandas>=2.2
+lxml>=5.2                 # RDD2022 ships Pascal VOC XML annotations
+tqdm>=4.66
+requests>=2.32
+
+# Geo / tracking (Phase 2, included now so env is ready)
+geojson>=3.1
