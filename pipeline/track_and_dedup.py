@@ -26,6 +26,13 @@ import cv2
 from ultralytics import YOLO
 
 from pipeline.dimension_estimation import CameraModel, estimate_bbox_dimensions
+from pipeline.geo import (
+    dedupe_by_location,
+    load_csv,
+    load_gpx,
+    make_gps_lookup,
+    write_geojson,
+)
 
 
 @dataclass
@@ -219,6 +226,7 @@ def process_video(
     min_track_len: int = 2,
     gps_lookup: Optional[Callable[[float], dict]] = None,
     camera: Optional[CameraModel] = None,
+    dedup_radius_m: Optional[float] = None,
 ) -> list[DefectRecord]:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -233,11 +241,21 @@ def process_video(
     attach_locations(records, gps_lookup)
     attach_dimensions(records, camera)
 
+    if dedup_radius_m and gps_lookup is not None:
+        before = len(records)
+        records = dedupe_by_location(records, radius_m=dedup_radius_m)
+        print(f"-> {len(records)} after spatial dedup ({before - len(records)} merged)")
+
     manifest_path = out_path / "defects.json"
     manifest_path.write_text(
         json.dumps([asdict(r) for r in records], indent=2)
     )
     print(f"Wrote {manifest_path}")
+
+    if gps_lookup is not None:
+        n = write_geojson(records, out_path / "defects.geojson")
+        print(f"Wrote {out_path / 'defects.geojson'} ({n} located features)")
+
     return records
 
 
@@ -253,12 +271,22 @@ def main() -> None:
         help="JSON file with fx, fy, cx, cy, height_m, pitch_deg -- enables "
         "real-world dimension estimates on each defect record",
     )
+    parser.add_argument("--gps", help="GPS log (.gpx or .csv) to geotag defects")
+    parser.add_argument("--gps-offset", type=float, default=0.0,
+                        help="seconds to add to video time to align it with the GPS clock")
+    parser.add_argument("--dedup-radius", type=float, default=8.0,
+                        help="merge same-class defects within this many metres (needs --gps)")
     args = parser.parse_args()
 
     camera = None
     if args.camera_config:
         cfg = json.loads(Path(args.camera_config).read_text())
         camera = CameraModel(**cfg)
+
+    gps_lookup = None
+    if args.gps:
+        fixes = load_gpx(args.gps) if args.gps.lower().endswith(".gpx") else load_csv(args.gps)
+        gps_lookup = make_gps_lookup(fixes, time_offset_s=args.gps_offset)
 
     process_video(
         video_path=args.video,
@@ -267,6 +295,8 @@ def main() -> None:
         conf=args.conf,
         min_track_len=args.min_track_len,
         camera=camera,
+        gps_lookup=gps_lookup,
+        dedup_radius_m=args.dedup_radius,
     )
 
 
