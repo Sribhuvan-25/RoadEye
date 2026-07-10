@@ -4,11 +4,11 @@ __pycache__/
 *.pyc
 *.egg-info/
 
-# Data (large, downloaded — not committed)
+# Data — downloaded/derived, never committed
 data/raw/
 data/processed/
 
-# Models (large binaries — not committed)
+# Model binaries — regenerate via scripts/export_and_benchmark.py
 *.pt
 *.tflite
 *.mlpackage
@@ -18,15 +18,24 @@ data/processed/
 models/*
 !models/.gitkeep
 
-# Logs / experiment outputs
-logs/*.log
+# Training / experiment outputs — regenerate by re-running training
+logs/*
+!logs/.gitkeep
 runs/
 wandb/
+
+# Internal working docs — not part of the published project
+docs/
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+DerivedData/
 
 # OS / editor
 .DS_Store
 .vscode/
 .idea/
 
-# Claude Code runtime state
 .claude/
+CLAUDE.md

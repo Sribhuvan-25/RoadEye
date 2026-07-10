@@ -1,0 +1,16 @@
+{
+  "id": "sribhuvanreddy/road-damage-yolo11n-100ep",
+  "title": "road-damage-yolo11n-100ep",
+  "code_file": "train_road_damage.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [
+    "lorenzoarcioni/road-damage-dataset-potholes-cracks-and-manholes"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
