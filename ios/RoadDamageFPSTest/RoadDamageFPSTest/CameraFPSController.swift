@@ -16,8 +16,12 @@ final class CameraFPSController: NSObject, ObservableObject {
 
     let session = AVCaptureSession()
     let movieOutput = AVCaptureMovieFileOutput()
+    /// Set while a drive is recording; receives tracked detections + crops.
+    var collector: DetectionCollector?
     private let videoQueue = DispatchQueue(label: "camera.frame.queue")
     private var visionRequest: VNCoreMLRequest?
+    private var latestFrame: UIImage?
+    private var frameSize: CGSize = .zero
 
     // FPS bookkeeping
     private var frameTimestamps: [CFTimeInterval] = []
@@ -136,8 +140,13 @@ final class CameraFPSController: NSObject, ObservableObject {
         // keep a rolling ~2 second window for "current" FPS
         frameTimestamps.removeAll { now - $0 > 2.0 }
 
-        let count = (request.results as? [VNRecognizedObjectObservation])?.count ?? 0
+        let observations = (request.results as? [VNRecognizedObjectObservation]) ?? []
+        let count = observations.count
         let elapsed = now - sessionStart
+
+        if let collector = collector, collector.active, frameSize != .zero {
+            feedCollector(observations, collector: collector, elapsed: elapsed)
+        }
 
         DispatchQueue.main.async {
             self.currentFPS = Double(self.frameTimestamps.count) / 2.0
@@ -145,6 +154,27 @@ final class CameraFPSController: NSObject, ObservableObject {
             self.detectionCount = count
             self.statusText = "Running"
         }
+    }
+
+    /// Convert Vision observations (normalized, bottom-left origin) into
+    /// top-left pixel boxes and hand them to the collector with the frame.
+    private func feedCollector(
+        _ obs: [VNRecognizedObjectObservation],
+        collector: DetectionCollector, elapsed: TimeInterval
+    ) {
+        let w = frameSize.width, h = frameSize.height
+        var classes: [String] = [], confs: [Double] = [], boxes: [CGRect] = []
+        for o in obs {
+            guard let label = o.labels.first else { continue }
+            let bb = o.boundingBox   // normalized, origin bottom-left
+            let rect = CGRect(x: bb.minX * w, y: (1 - bb.maxY) * h,
+                              width: bb.width * w, height: bb.height * h)
+            classes.append(label.identifier)
+            confs.append(Double(o.confidence))
+            boxes.append(rect)
+        }
+        collector.add(timestamp: elapsed, classes: classes,
+                      confidences: confs, boxes: boxes, frame: latestFrame)
     }
 }
 
@@ -159,6 +189,18 @@ extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard !isProcessing, let request = visionRequest,
               let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         isProcessing = true
+
+        // Keep the frame image only while recording (crops need it); it's the
+        // expensive part, so skip it when just showing the live indicator.
+        if let collector = collector, collector.active {
+            let ci = CIImage(cvPixelBuffer: pixelBuffer)
+            let ctx = CIContext()
+            if let cg = ctx.createCGImage(ci, from: ci.extent) {
+                let img = UIImage(cgImage: cg, scale: 1, orientation: .right)
+                latestFrame = img
+                frameSize = img.size
+            }
+        }
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right)
         do {

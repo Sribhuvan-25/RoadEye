@@ -40,6 +40,11 @@ final class LocationRecorder: NSObject, ObservableObject, CLLocationManagerDeleg
         return out
     }
 
+    /// Fixes for on-device processing (SessionProcessor).
+    func fixes() -> [SessionProcessor.GpsFix] {
+        rows.map { .init(t: $0.t, lat: $0.lat, lon: $0.lon, heading: $0.heading) }
+    }
+
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         authorized = status == .authorizedWhenInUse || status == .authorizedAlways
