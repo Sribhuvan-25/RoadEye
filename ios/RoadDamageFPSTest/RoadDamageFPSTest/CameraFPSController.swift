@@ -15,6 +15,7 @@ final class CameraFPSController: NSObject, ObservableObject {
     @Published var statusText: String = "Starting..."
 
     let session = AVCaptureSession()
+    let movieOutput = AVCaptureMovieFileOutput()
     private let videoQueue = DispatchQueue(label: "camera.frame.queue")
     private var visionRequest: VNCoreMLRequest?
 
@@ -89,6 +90,9 @@ final class CameraFPSController: NSObject, ObservableObject {
         output.alwaysDiscardsLateVideoFrames = true
         if session.canAddOutput(output) {
             session.addOutput(output)
+        }
+        if session.canAddOutput(movieOutput) {
+            session.addOutput(movieOutput)
         }
         session.commitConfiguration()
 
