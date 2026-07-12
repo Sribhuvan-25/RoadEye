@@ -51,7 +51,43 @@ enum SessionProcessor {
             record.cropFilename = "defect_\(trackID)_\(majorityClass).jpg"
             records.append(record)
         }
-        return records.sorted { $0.firstSeenS < $1.firstSeenS }
+        let ordered = records.sorted { $0.firstSeenS < $1.firstSeenS }
+        return dedupeByLocation(ordered, radiusM: 8.0)
+    }
+
+    /// Merge same-class records within radiusM metres -- collapses a defect
+    /// seen on a second pass or split across a tracking gap into one, keeping
+    /// the highest-confidence record. Unlocated records pass through. Mirrors
+    /// dedupe_by_location in pipeline/geo.py.
+    static func dedupeByLocation(_ records: [DefectRecord], radiusM: Double) -> [DefectRecord] {
+        var kept: [DefectRecord] = []
+        var dropped = Set<Int>()
+        for i in records.indices {
+            let r = records[i]
+            guard let rloc = r.location else { kept.append(r); continue }
+            if dropped.contains(i) { continue }
+            var best = r
+            for j in (i + 1)..<records.count {
+                let o = records[j]
+                guard !dropped.contains(j), o.className == r.className,
+                      let oloc = o.location else { continue }
+                if haversine(rloc.lat, rloc.lon, oloc.lat, oloc.lon) <= radiusM {
+                    dropped.insert(j)
+                    if o.confidence > best.confidence { best = o }
+                }
+            }
+            kept.append(best)
+        }
+        return kept
+    }
+
+    private static func haversine(_ lat1: Double, _ lon1: Double,
+                                  _ lat2: Double, _ lon2: Double) -> Double {
+        let R = 6_371_000.0
+        let p1 = lat1 * .pi / 180, p2 = lat2 * .pi / 180
+        let dp = (lat2 - lat1) * .pi / 180, dl = (lon2 - lon1) * .pi / 180
+        let a = sin(dp / 2) * sin(dp / 2) + cos(p1) * cos(p2) * sin(dl / 2) * sin(dl / 2)
+        return 2 * R * asin(min(1, sqrt(a)))
     }
 
     /// Linear interpolation between the two GPS fixes bracketing a time.
