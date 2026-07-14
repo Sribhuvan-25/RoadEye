@@ -37,6 +37,10 @@ Run on a physical device (the Simulator has no camera). The project uses Xcode
 
 ## Measurement config
 
-`SessionRecorder.mountHeightM` (default 1.3 m) and `horizonFraction` (0.45)
-drive the IPM measurement — tune per vehicle mount. Field validation of the
-resulting accuracy is still pending (needs a drive + tape-measured defects).
+Set via the in-app Settings screen (gear icon), persisted in `AppSettings`:
+- **Mount height** — road surface to camera; scales every dimension.
+- **Horizon line** — drag a line onto the real horizon over the live feed to
+  set camera pitch.
+
+These drive the IPM measurement. Accuracy still needs field validation (a
+drive + tape-measured defects).

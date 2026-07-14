@@ -49,6 +49,9 @@ struct ContentView: View {
                     .foregroundStyle(.red)
             }
             Spacer()
+            NavigationLink(destination: SettingsView(session: controller.session)) {
+                Image(systemName: "gearshape").foregroundStyle(.white)
+            }
             NavigationLink(destination: SessionsView()) {
                 Image(systemName: "list.bullet.rectangle").foregroundStyle(.white)
             }

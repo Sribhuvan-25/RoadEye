@@ -15,10 +15,6 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
     @Published var lastSessionID: String?
     @Published var processing = false
 
-    /// Per-vehicle mount config for measurement.
-    var mountHeightM: Double = 1.3
-    var horizonFraction: Double = 0.45   // horizon row as a fraction of frame height
-
     private let camera: CameraFPSController
     private let location: LocationRecorder
     private let collector = DetectionCollector()
@@ -72,8 +68,8 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
         processing = true
         let snap = collector.snapshot()
         let fixes = location.fixes()
-        let height = mountHeightM
-        let horizonFrac = horizonFraction
+        let height = AppSettings.shared.mountHeightM
+        let horizonFrac = AppSettings.shared.horizonFraction
         let epoch = startEpoch
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
