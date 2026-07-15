@@ -1,8 +1,9 @@
 import AVFoundation
 import Combine
+import CoreImage
 import CoreML
+import UIKit
 import Vision
-import SwiftUI
 
 /// Throwaway Phase 0 test harness: runs the road-damage CoreML model on every
 /// live camera frame and reports sustained FPS. No UI polish, no persistence --

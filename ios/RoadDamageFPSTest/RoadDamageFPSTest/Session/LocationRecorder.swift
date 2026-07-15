@@ -1,5 +1,6 @@
 import Combine
 import CoreLocation
+import QuartzCore
 
 /// Logs GPS fixes during a recording session, timestamped as seconds from a
 /// shared session start so the log lines up with the video clock. Writes the
