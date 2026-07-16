@@ -1,3 +1,7 @@
+# Secrets — never commit API keys
+.env
+report/.env
+
 # Python
 .venv/
 __pycache__/
@@ -26,6 +30,9 @@ wandb/
 
 # Internal working docs — not part of the published project
 docs/
+
+# Generated inspection reports — regenerate from a session's defects.json
+report/out/
 
 # Xcode user state
 xcuserdata/

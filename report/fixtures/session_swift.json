@@ -1,0 +1,24 @@
+[
+  {
+    "trackID": 2,
+    "className": "Pothole",
+    "confidence": 0.77,
+    "firstSeenS": 5.2,
+    "lastSeenS": 6.1,
+    "nFrames": 27,
+    "cropFilename": "defect_2_Pothole.jpg",
+    "location": {"lat": 37.7749, "lon": -122.4194, "heading": 90.0},
+    "dimensions": {"widthM": 0.45, "lengthM": 0.4, "areaM2": 0.18, "distanceM": 7.0}
+  },
+  {
+    "trackID": 4,
+    "className": "Crack",
+    "confidence": 0.44,
+    "firstSeenS": 9.0,
+    "lastSeenS": 10.5,
+    "nFrames": 38,
+    "cropFilename": "defect_4_Crack.jpg",
+    "location": {"lat": 37.77498, "lon": -122.41928, "heading": 91.2},
+    "dimensions": {"widthM": 0.1, "lengthM": 0.7, "areaM2": 0.07, "distanceM": 8.0}
+  }
+]
