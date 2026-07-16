@@ -1,17 +1,14 @@
 import CoreGraphics
 import Foundation
 
-/// A single detection in one frame, before tracking collapses them.
 struct FrameDetection {
-    let timestamp: TimeInterval   // seconds from session start
+    let timestamp: TimeInterval
     let trackID: Int
     let className: String
     let confidence: Double
-    let bbox: CGRect              // pixels in the source frame
+    let bbox: CGRect
 }
 
-/// One physical defect after tracking + dedup: what the user reviews.
-/// Codable so a session's defects persist as defects.json on disk.
 struct DefectRecord: Codable, Identifiable {
     var id: Int { trackID }
     let trackID: Int
@@ -20,7 +17,7 @@ struct DefectRecord: Codable, Identifiable {
     let firstSeenS: TimeInterval
     let lastSeenS: TimeInterval
     let nFrames: Int
-    var cropFilename: String?              // image saved beside defects.json
+    var cropFilename: String?
     var location: GeoPoint?
     var dimensions: Dimensions?
 }

@@ -12,8 +12,8 @@ struct CameraModel {
     var fy: Double
     var cx: Double
     var cy: Double
-    var heightM: Double     // camera height above the road
-    var pitchDeg: Double    // downward tilt; 0 = looking at the horizon
+    var heightM: Double
+    var pitchDeg: Double
 
     var pitchRad: Double { pitchDeg * .pi / 180 }
 }
@@ -26,7 +26,6 @@ struct BoxDimensions {
 }
 
 enum Geometry {
-    /// iPhone main/wide camera horizontal FOV (~26mm equiv).
     static let iphoneMainHFOVDeg = 68.0
 
     static func intrinsicsFromFOV(
@@ -37,7 +36,6 @@ enum Geometry {
         return (fx, fx, w / 2, h / 2)
     }
 
-    /// Pitch (deg, downward positive) from the horizon's pixel row.
     static func pitchFromHorizon(horizonRow: Double, cy: Double, fy: Double) -> Double {
         atan((cy - horizonRow) / fy) * 180 / .pi
     }
@@ -51,8 +49,6 @@ enum Geometry {
         return CameraModel(fx: k.fx, fy: k.fy, cx: k.cx, cy: k.cy, heightM: heightM, pitchDeg: pitch)
     }
 
-    /// Map an image pixel to its (X, Y) ground-plane point in metres.
-    /// Returns nil for pixels on/above the horizon (ray never hits ground).
     static func pixelToGround(_ cam: CameraModel, u: Double, v: Double) -> (x: Double, y: Double)? {
         let dx = (u - cam.cx) / cam.fx
         let dy = (v - cam.cy) / cam.fy

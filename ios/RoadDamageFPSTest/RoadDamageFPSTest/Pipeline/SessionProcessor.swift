@@ -90,7 +90,6 @@ enum SessionProcessor {
         return 2 * R * asin(min(1, sqrt(a)))
     }
 
-    /// Linear interpolation between the two GPS fixes bracketing a time.
     private static func interpolate(gps: [GpsFix], at t: TimeInterval) -> GeoPoint? {
         guard !gps.isEmpty else { return nil }
         let fixes = gps.sorted { $0.t < $1.t }

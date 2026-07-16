@@ -56,7 +56,6 @@ final class LocationRecorder: NSObject, ObservableObject, CLLocationManagerDeleg
         lastFix = loc
         guard let start = sessionStart else { return }
         let t = CACurrentMediaTime() - start
-        // CLLocation.course is -1 when heading is unavailable (stationary)
         let heading = loc.course >= 0 ? loc.course : 0
         rows.append((t: t, lat: loc.coordinate.latitude, lon: loc.coordinate.longitude, heading: heading))
     }

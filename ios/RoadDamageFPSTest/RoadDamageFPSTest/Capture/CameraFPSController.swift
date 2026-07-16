@@ -39,9 +39,6 @@ final class CameraFPSController: NSObject, ObservableObject {
     private func setupModel() {
         do {
             let config = MLModelConfiguration()
-            // .all / .cpuAndGPU currently crash on iPhone 17 Pro + iOS 26.5
-            // (CoreML/Metal graph-compile bug on new silicon). .cpuOnly is a
-            // stopgap; retry the ANE path after an Xcode/iOS update.
             config.computeUnits = .cpuOnly
             let model = try RoadDamageDetector(configuration: config)
             let vnModel = try VNCoreMLModel(for: model.model)
@@ -115,8 +112,6 @@ final class CameraFPSController: NSObject, ObservableObject {
         sessionStart = CACurrentMediaTime()
         totalFramesProcessed = 0
         frameTimestamps = []
-        // session is started once permission resolves in configureSession();
-        // if it's already running (e.g. view re-appeared), this is a harmless no-op.
         videoQueue.async { [weak self] in
             if self?.session.isRunning == false {
                 self?.session.startRunning()
@@ -138,7 +133,6 @@ final class CameraFPSController: NSObject, ObservableObject {
         let now = CACurrentMediaTime()
         totalFramesProcessed += 1
         frameTimestamps.append(now)
-        // keep a rolling ~2 second window for "current" FPS
         frameTimestamps.removeAll { now - $0 > 2.0 }
 
         let observations = (request.results as? [VNRecognizedObjectObservation]) ?? []
@@ -185,14 +179,10 @@ extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        // Drop frames if inference is still busy on the previous one --
-        // measuring SUSTAINED throughput, not queuing up a backlog.
         guard !isProcessing, let request = visionRequest,
               let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         isProcessing = true
 
-        // Keep the frame image only while recording (crops need it); it's the
-        // expensive part, so skip it when just showing the live indicator.
         if let collector = collector, collector.active {
             let ci = CIImage(cvPixelBuffer: pixelBuffer)
             let ctx = CIContext()

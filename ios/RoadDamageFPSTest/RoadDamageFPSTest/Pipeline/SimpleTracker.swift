@@ -26,7 +26,6 @@ final class SimpleTracker {
         self.maxGapFrames = maxGapFrames
     }
 
-    /// Assign a track ID to each box in the current frame (order preserved).
     func update(boxes: [CGRect]) -> [Int] {
         frameIndex += 1
         tracks.removeAll { frameIndex - $0.lastSeenFrame > maxGapFrames }
