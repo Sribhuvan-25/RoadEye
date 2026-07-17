@@ -7,6 +7,8 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings = AppSettings.shared
     let session: AVCaptureSession
+    @State private var apiKeyInput = ""
+    @State private var hasStoredKey = KeychainStore.load() != nil
 
     var body: some View {
         Form {
@@ -29,6 +31,24 @@ struct SettingsView: View {
                 Text("Drag the green line onto the real horizon (where road meets sky). Sets the camera tilt.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(String(format: "Horizon at %.0f%% down the frame", settings.horizonFraction * 100))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Inspection report") {
+                SecureField("OpenRouter API key (sk-or-...)", text: $apiKeyInput)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                Button("Save key to Keychain") {
+                    let trimmed = apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    KeychainStore.save(trimmed)
+                    apiKeyInput = ""
+                    hasStoredKey = true
+                }
+                .disabled(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Text(hasStoredKey
+                     ? "A key is stored. Reports can be generated from Past Sessions."
+                     : "No key stored. Report generation is disabled until one is saved.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

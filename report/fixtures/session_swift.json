@@ -20,5 +20,49 @@
     "cropFilename": "defect_4_Crack.jpg",
     "location": {"lat": 37.77498, "lon": -122.41928, "heading": 91.2},
     "dimensions": {"widthM": 0.1, "lengthM": 0.7, "areaM2": 0.07, "distanceM": 8.0}
+  },
+  {
+    "trackID": 6,
+    "className": "Pothole",
+    "confidence": 0.812,
+    "firstSeenS": 14.3,
+    "lastSeenS": 15.6,
+    "nFrames": 35,
+    "cropFilename": "defect_6_Pothole.jpg",
+    "location": {"lat": 37.77512, "lon": -122.419015, "heading": 90.5},
+    "dimensions": {"widthM": 0.8, "lengthM": 0.7, "areaM2": 0.5, "distanceM": 6.0}
+  },
+  {
+    "trackID": 9,
+    "className": "Crack",
+    "confidence": 0.483,
+    "firstSeenS": 18.9,
+    "lastSeenS": 21.2,
+    "nFrames": 58,
+    "cropFilename": "defect_9_Crack.jpg",
+    "location": {"lat": 37.775231, "lon": -122.418773, "heading": 90.9},
+    "dimensions": {"widthM": 0.15, "lengthM": 4.25, "areaM2": 0.64, "distanceM": 6.5}
+  },
+  {
+    "trackID": 12,
+    "className": "Manhole",
+    "confidence": 0.905,
+    "firstSeenS": 24.0,
+    "lastSeenS": 24.8,
+    "nFrames": 21,
+    "cropFilename": "defect_12_Manhole.jpg",
+    "location": {"lat": 37.77531, "lon": -122.41862, "heading": 91.0},
+    "dimensions": {"widthM": 0.66, "lengthM": 0.64, "areaM2": 0.42, "distanceM": 7.5}
+  },
+  {
+    "trackID": 15,
+    "className": "Pothole",
+    "confidence": 0.51,
+    "firstSeenS": 29.4,
+    "lastSeenS": 29.9,
+    "nFrames": 13,
+    "cropFilename": "defect_15_Pothole.jpg",
+    "location": null,
+    "dimensions": null
   }
 ]

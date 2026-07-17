@@ -63,6 +63,9 @@ struct SessionDetailView: View {
             }
         }
         .navigationTitle("\(records.count) defects")
+        .toolbar {
+            NavigationLink("Report") { ReportView(session: session) }
+        }
         .onAppear { records = SessionStore.loadRecords(session.sessionID) }
     }
 
