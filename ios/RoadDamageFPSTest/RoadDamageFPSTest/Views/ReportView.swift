@@ -19,9 +19,7 @@ struct ReportView: View {
         Group {
             if let text = reportText {
                 ScrollView {
-                    Text(text)
-                        .font(.system(.footnote, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    MarkdownReportView(text: text)
                         .padding()
                 }
             } else if generating {

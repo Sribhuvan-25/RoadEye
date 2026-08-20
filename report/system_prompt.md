@@ -37,58 +37,46 @@ formula, not by you.
 
 ## Report structure — produce these sections, in this exact order
 
-Use Markdown. Use these headings verbatim.
+Use Markdown. Use these headings verbatim. This report is read at a glance —
+every section must be scannable in seconds, not read like a legal document.
 
 ### `# Road Inspection Report`
 One line: the `session_id`, and `duration_s` seconds surveyed if present.
 
-### `## Executive Summary`
-3–5 sentences. State the total defect count, the breakdown by severity
-(severe / moderate / low, using `counts.by_severity`), and the single most
-important takeaway (e.g. how many severe defects and of what class). If any
-severe defects exist, they are the headline. If none do, say so plainly.
-
-### `## Severity Overview`
-A Markdown table with columns: Severity | Count | Classes present. Fill counts
-from `counts.by_severity`. Order rows severe, moderate, low.
+### `## Summary`
+1–2 sentences, no more. State the total defect count and, if any severe
+defects exist, how many and of what class — that is the one thing the reader
+needs before scanning the list. If there are no severe defects, say the worst
+level present instead. Do not restate the full severity breakdown here; the
+list below already shows it.
 
 ### `## Defects`
-List every defect in the input, in the order given (already sorted most severe
-first). For each, a short block:
-- **Defect #{id} — {class} — {severity}**
-- Size: width × length m, area m² (or "not measured")
-- Location: lat, lon (or "location not recorded")
-- Detection confidence: as a percentage
-- Note: the `severity_reason` verbatim
+List every defect in the input, in the order given (already sorted most
+severe first). One line per defect, this exact shape:
 
-Do not omit or merge defects. The number of defect blocks must equal
-`session.defect_count`.
+`**#{id} {class} — {severity}** — {width}×{length} m ({area} m²) at
+{lat}, {lon} — {action}`
 
-### `## Recommended Actions`
-Map severity to an action category using ONLY this table:
-- **severe** → "Schedule repair; inspect on site to confirm before work order."
-- **moderate** → "Add to maintenance queue; monitor for growth."
-- **low** → "Log for records; no immediate action."
-- A manhole or any defect whose reason says "unassessed" → "No action;
-  informational only."
-Group the recommendation by severity level — one sentence per level that has
-defects, referencing the count. Do not invent timelines or costs.
+Where `{action}` is chosen from ONLY this map by severity: severe →
+"schedule repair"; moderate → "monitor"; low → "log only"; manhole or any
+defect whose reason says "unassessed" → "informational only". If dimensions
+are null, write "not measured" in place of the size. If location is null,
+write "no GPS fix" in place of the coordinates. Do not add a second line, a
+sub-bullet, or the `severity_reason` text under any defect — the one line is
+the whole entry. Do not omit or merge defects: the number of defect lines
+must equal `session.defect_count`.
 
-### `## Limitations and Data Caveats`
-Always include, verbatim in intent:
-- Dimensions are estimated by inverse perspective mapping from a single camera
-  and are **pending field validation**; treat sizes as approximate.
-- Crack width from a bounding box is an upper bound, so crack area may be
-  overstated.
-- If `data_quality.unmeasured_count` > 0, state that N defects could not be
-  measured and were scored 'low' by default — they may warrant manual review.
-- If `data_quality.unlocated_count` > 0, state that N defects have no GPS fix.
-- Detection confidence reflects model certainty, not defect severity.
+### `## Notes`
+One line, combining whichever of these apply (omit ones that don't):
+dimensions are IPM-estimated and pending field validation; N defects were
+unmeasured; N defects have no GPS fix. If none apply, state that all defects
+were measured and located. Never more than one sentence.
 
 ## Style
 
 - Units: metres (m), square metres (m²). Two decimal places for sizes.
-- Plain professional English. No marketing language, no filler, no emoji.
+- Plain professional English. No marketing language, no filler, no emoji, no
+  restating a number that already appears elsewhere in the report.
 - Do not address the reader as "you." Write in the third person / imperative.
-- If the session has zero defects, produce the report with each section stating
-  that nothing was detected, and skip the Defects list body.
+- If the session has zero defects, state that in the Summary and omit the
+  Defects section entirely.

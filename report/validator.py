@@ -9,11 +9,7 @@ import re
 
 REQUIRED_HEADINGS = [
     "# Road Inspection Report",
-    "## Executive Summary",
-    "## Severity Overview",
-    "## Defects",
-    "## Recommended Actions",
-    "## Limitations and Data Caveats",
+    "## Summary",
 ]
 
 _NUM_RE = re.compile(r"(?<![\w.])-?\d+\.?\d*")
@@ -96,6 +92,10 @@ def validate(report: str, payload: dict) -> list:
         if h not in report:
             problems.append(f"missing required heading: {h!r}")
 
+    want = payload["session"].get("defect_count", 0)
+    if want and "## Defects" not in report:
+        problems.append("missing required heading: '## Defects'")
+
     for r in payload["defects"]:
         did = r.get("id")
         if did is None:
@@ -103,11 +103,10 @@ def validate(report: str, payload: dict) -> list:
         if not re.search(rf"#\s*{re.escape(str(did))}\b", report):
             problems.append(f"defect id {did} not referenced in report")
 
-    n_blocks = len(re.findall(r"\*\*Defect\s*#", report))
-    want = payload["session"].get("defect_count", 0)
-    if want and n_blocks != want:
+    n_lines = len(re.findall(r"\*\*#\d+\s", report))
+    if want and n_lines != want:
         problems.append(
-            f"found {n_blocks} defect blocks, expected {want}"
+            f"found {n_lines} defect lines, expected {want}"
         )
 
     allowed = _allowed_numbers(payload)

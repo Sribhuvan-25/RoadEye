@@ -37,31 +37,21 @@ case "validator-test":
     # Road Inspection Report
     Session swift-001, 45.5 seconds surveyed.
 
-    ## Executive Summary
-    6 defects: 2 severe, 1 moderate, 3 low. Total measured area 1.81 m².
-
-    ## Severity Overview
-    | Severity | Count | Classes present |
-    |---|---|---|
-    | severe | 2 | Crack, Pothole |
-    | moderate | 1 | Pothole |
-    | low | 3 | Manhole, Crack, Pothole |
+    ## Summary
+    6 defects found; 2 severe (Crack, Pothole) need attention first.
 
     ## Defects
-    **Defect #9 — Crack — severe** Size 0.15 × 4.25 m, area 0.64 m². Location 37.775231, -122.418773. Confidence 48.3%.
-    **Defect #6 — Pothole — severe** Size 0.8 × 0.7 m, area 0.5 m². Location 37.77512, -122.419015. Confidence 81.2%.
-    **Defect #2 — Pothole — moderate** Size 0.45 × 0.4 m, area 0.18 m². Location 37.7749, -122.4194. Confidence 77%.
-    **Defect #12 — Manhole — low** Size 0.66 × 0.64 m, area 0.42 m². Location 37.77531, -122.41862. Confidence 90.5%.
-    **Defect #4 — Crack — low** Size 0.1 × 0.7 m, area 0.07 m². Location 37.77498, -122.41928. Confidence 44%.
-    **Defect #15 — Pothole — low** Not measured. Location not recorded. Confidence 51%.
+    **#9 Crack — severe** — 0.15×4.25 m (0.64 m²) at 37.775231, -122.418773 — schedule repair.
+    **#6 Pothole — severe** — 0.8×0.7 m (0.5 m²) at 37.77512, -122.419015 — schedule repair.
+    **#2 Pothole — moderate** — 0.45×0.4 m (0.18 m²) at 37.7749, -122.4194 — monitor.
+    **#12 Manhole — low** — 0.66×0.64 m (0.42 m²) at 37.77531, -122.41862 — informational only.
+    **#4 Crack — low** — 0.1×0.7 m (0.07 m²) at 37.77498, -122.41928 — log only.
+    **#15 Pothole — low** — not measured at no GPS fix — log only.
 
-    ## Recommended Actions
-    Severe (2): schedule repair. Moderate (1): maintenance queue. Low (3): log only.
-
-    ## Limitations and Data Caveats
-    Dimensions via IPM, pending field validation. 1 unmeasured, 1 unlocated.
+    ## Notes
+    Dimensions are IPM-estimated pending field validation; 1 defect unmeasured; 1 defect has no GPS fix.
     """
-    let bad = good.replacingOccurrences(of: "area 0.64 m²", with: "area 9.87 m²")
+    let bad = good.replacingOccurrences(of: "0.64 m²", with: "9.87 m²")
         + "\nEstimated repair cost: 3100 dollars.\n"
     let missing = good.split(separator: "\n", omittingEmptySubsequences: false)
         .filter { !$0.contains("#15") }.joined(separator: "\n")
@@ -75,6 +65,17 @@ case "validator-test":
     let ok = g.isEmpty && !b.isEmpty && !m.isEmpty
     print(ok ? "PASS" : "FAIL")
     exit(ok ? 0 : 1)
+case "keychain-test":
+    let testValue = "sk-or-v1-TESTVALUE-1234567890"
+    KeychainStore.delete()
+    let before = KeychainStore.load()
+    print("before save, load() = \(before ?? "nil") (expect nil)")
+    KeychainStore.save(testValue)
+    let after = KeychainStore.load()
+    print("after save, load() = \(after ?? "nil")")
+    print(after == testValue ? "MATCH" : "MISMATCH")
+    KeychainStore.delete()
+    exit(after == testValue ? 0 : 1)
 case "generate":
     let records = loadRecords(args[2])
     guard let key = envAPIKey() else {

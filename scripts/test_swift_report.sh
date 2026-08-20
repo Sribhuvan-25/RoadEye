@@ -4,8 +4,9 @@
 #   2. payload parity: Swift builder output == Python builder output (semantic)
 #   3. prompt sync: embedded ReportPrompt.text == report/system_prompt.md
 #   4. validator behavior: faithful passes, tampered/missing fail
-#   5. (--live) real OpenRouter call through the Swift pipeline, validated
-# Run from the repo root. Steps 1-4 are offline and free.
+#   5. keychain round-trip: save/load via the same Security APIs the app uses
+#   6. (--live) real OpenRouter call through the Swift pipeline, validated
+# Run from the repo root. Steps 1-5 are offline and free.
 set -euo pipefail
 
 SRC=ios/RoadDamageFPSTest/RoadDamageFPSTest
@@ -13,7 +14,7 @@ FIXTURE=report/fixtures/session_swift.json
 OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 
-echo "[1/5] compile"
+echo "[1/6] compile"
 swiftc -o "$OUT/harness" \
     "$SRC/Pipeline/DefectModels.swift" \
     "$SRC/Report/Severity.swift" \
@@ -22,9 +23,10 @@ swiftc -o "$OUT/harness" \
     "$SRC/Report/ReportValidator.swift" \
     "$SRC/Report/OpenRouterClient.swift" \
     "$SRC/Report/ReportGenerator.swift" \
+    "$SRC/Report/KeychainStore.swift" \
     scripts/report_harness/main.swift
 
-echo "[2/5] payload parity vs Python"
+echo "[2/6] payload parity vs Python"
 "$OUT/harness" payload "$FIXTURE" swift-001 45.5 > "$OUT/swift_payload.json"
 python -m report.generate --defects "$FIXTURE" --session swift-001 \
     --duration-s 45.5 --dry-run > "$OUT/py_payload.json"
@@ -50,20 +52,23 @@ if d:
 print("      parity OK")
 EOF
 
-echo "[3/5] prompt sync"
+echo "[3/6] prompt sync"
 "$OUT/harness" prompt > "$OUT/swift_prompt.txt"
 diff report/system_prompt.md "$OUT/swift_prompt.txt" > /dev/null \
     && echo "      prompt OK" || { echo "PROMPT DRIFT vs system_prompt.md"; exit 1; }
 
-echo "[4/5] validator behavior"
+echo "[4/6] validator behavior"
 "$OUT/harness" validator-test "$FIXTURE" swift-001 | tail -1
 
+echo "[5/6] keychain round-trip"
+"$OUT/harness" keychain-test | tail -2
+
 if [[ "${1:-}" == "--live" ]]; then
-    echo "[5/5] live OpenRouter generation"
+    echo "[6/6] live OpenRouter generation"
     "$OUT/harness" generate "$FIXTURE" swift-001 45.5 > "$OUT/report.md"
     echo "      live generation validated ($(wc -l < "$OUT/report.md") lines)"
 else
-    echo "[5/5] skipped (pass --live for a real API call)"
+    echo "[6/6] skipped (pass --live for a real API call)"
 fi
 
 echo "ALL CHECKS PASSED"

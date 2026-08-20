@@ -12,33 +12,22 @@ FIX = Path(__file__).parent / "fixtures" / "session_demo.json"
 GOOD = """# Road Inspection Report
 Session demo-001, 32.0 seconds surveyed.
 
-## Executive Summary
-6 defects were detected: 2 severe, 1 moderate, 3 low. The two severe defects
-(one crack, one pothole) are the priority.
-
-## Severity Overview
-| Severity | Count | Classes present |
-|---|---|---|
-| severe | 2 | Crack, Pothole |
-| moderate | 1 | Crack |
-| low | 3 | Manhole, Pothole |
+## Summary
+6 defects found; 2 severe (Crack, Pothole) need attention first.
 
 ## Defects
-**Defect #7 — Crack — severe** Size: 0.18 x 3.4 m, area 0.61 m2. Confidence 51.4%.
-**Defect #3 — Pothole — severe** Size 0.62 x 0.58 m, area 0.36 m2. Confidence 84.2%.
-**Defect #11 — Crack — moderate** Size 0.12 x 1.6 m, area 0.19 m2. Confidence 40.2%.
-**Defect #9 — Manhole — low** Size 0.64 x 0.63 m, area 0.4 m2. Confidence 91%.
-**Defect #5 — Pothole — low** Size 0.28 x 0.24 m, area 0.07 m2. Confidence 67.3%.
-**Defect #14 — Pothole — low** Not measured. Location not recorded. Confidence 58.8%.
+**#7 Crack — severe** — 0.18x3.4 m (0.61 m2) at 37.422105, -122.08376 — schedule repair.
+**#3 Pothole — severe** — 0.62x0.58 m (0.36 m2) at 37.421998, -122.084 — schedule repair.
+**#11 Crack — moderate** — 0.12x1.6 m (0.19 m2) at 37.42214, -122.0837 — monitor.
+**#9 Manhole — low** — 0.64x0.63 m (0.4 m2) at 37.42208, -122.08382 — informational only.
+**#5 Pothole — low** — 0.28x0.24 m (0.07 m2) at 37.42204, -122.08388 — log only.
+**#14 Pothole — low** — not measured at no GPS fix — log only.
 
-## Recommended Actions
-Severe (2): schedule repair. Moderate (1): maintenance queue. Low (3): log only.
-
-## Limitations and Data Caveats
-Dimensions via IPM, pending field validation. 1 defect unmeasured, 1 unlocated.
+## Notes
+Dimensions are IPM-estimated pending field validation; 1 defect unmeasured; 1 defect has no GPS fix.
 """
 
-BAD = GOOD.replace("area 0.61 m2", "area 9.99 m2") + \
+BAD = GOOD.replace("0.61 m2", "9.99 m2") + \
     "\nEstimated repair cost: 4200 dollars.\n"
 
 MISSING = "\n".join(

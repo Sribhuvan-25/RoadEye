@@ -8,11 +8,7 @@ enum ReportValidator {
 
     static let requiredHeadings = [
         "# Road Inspection Report",
-        "## Executive Summary",
-        "## Severity Overview",
-        "## Defects",
-        "## Recommended Actions",
-        "## Limitations and Data Caveats",
+        "## Summary",
     ]
 
     static func validate(report: String, payload: [String: Any]) -> [String] {
@@ -20,6 +16,13 @@ enum ReportValidator {
 
         for h in requiredHeadings where !report.contains(h) {
             problems.append("missing required heading: '\(h)'")
+        }
+
+        let session = payload["session"] as? [String: Any] ?? [:]
+        let want = session["defect_count"] as? Int ?? 0
+
+        if want > 0, !report.contains("## Defects") {
+            problems.append("missing required heading: '## Defects'")
         }
 
         let defects = payload["defects"] as? [[String: Any]] ?? []
@@ -30,10 +33,9 @@ enum ReportValidator {
             }
         }
 
-        let nBlocks = matches("\\*\\*Defect\\s*#", in: report).count
-        let session = payload["session"] as? [String: Any] ?? [:]
-        if let want = session["defect_count"] as? Int, want > 0, nBlocks != want {
-            problems.append("found \(nBlocks) defect blocks, expected \(want)")
+        let nLines = matches("\\*\\*#\\d+\\s", in: report).count
+        if want > 0, nLines != want {
+            problems.append("found \(nLines) defect lines, expected \(want)")
         }
 
         let allowed = allowedNumbers(payload)
