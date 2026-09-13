@@ -36,6 +36,12 @@ struct SettingsView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             }
 
+            Section("Recording") {
+                Toggle("Keep drive video", isOn: $settings.keepVideo)
+                Text("Off by default. Detection, measurement and photos all work without it; the raw video is only worth keeping if you want to re-process the drive later. A long drive can be several gigabytes.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Inspection report") {
                 SecureField("OpenRouter API key (sk-or-...)", text: $apiKeyInput)
                     .autocorrectionDisabled()

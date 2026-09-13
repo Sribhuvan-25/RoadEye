@@ -42,8 +42,10 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
         collector.start()
         camera.beginRecordingClock(at: startTime)
         camera.collector = collector
-        camera.movieOutput.startRecording(to: dir.appendingPathComponent("video.mov"),
-                                          recordingDelegate: self)
+        if AppSettings.shared.keepVideo {
+            camera.movieOutput.startRecording(to: dir.appendingPathComponent("video.mov"),
+                                              recordingDelegate: self)
+        }
 
         isRecording = true
         elapsed = 0
@@ -55,7 +57,7 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
 
     func stop() {
         guard isRecording, let id = sessionID, let dir = sessionDir else { return }
-        camera.movieOutput.stopRecording()
+        if camera.movieOutput.isRecording { camera.movieOutput.stopRecording() }
         location.stopSession()
         collector.stop()
         camera.collector = nil
