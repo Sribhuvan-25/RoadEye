@@ -13,7 +13,11 @@ Source layout (`RoadDamageFPSTest/`):
   (group→dedup→geotag→measure), `DefectModels`
 - `Session/` — `SessionRecorder`, `SessionStore` (crops + defects.json),
   `LocationRecorder` (CoreLocation GPS)
-- `Views/` — `ContentView`, `SessionsView`, `SettingsView`
+- `Report/` — `OfflineReport` (deterministic, on-device), `ReportGenerator` +
+  `OpenRouterClient` (optional AI-written version), `ReportValidator`,
+  `Severity`, `KeychainStore` (API key)
+- `Views/` — `ContentView`, `DetectionOverlay` (live boxes), `SessionsView`,
+  `DefectPhotoView` (full-screen crop), `ReportView`, `SettingsView`
 - `Settings/` — `AppSettings` (persisted measurement config)
 - `App/` — app entry point · `Models/` — CoreML model (gitignored)
 
@@ -44,3 +48,29 @@ Set via the in-app Settings screen (gear icon), persisted in `AppSettings`:
 
 These drive the IPM measurement. Accuracy still needs field validation (a
 drive + tape-measured defects).
+
+**Defects near the horizon are reported without a size.** The ground
+projection is numerically unstable there — a pixel one row below the horizon
+maps hundreds of metres out — so measurements beyond 30 m, or implying a
+single defect larger than 12 m², are rejected rather than reported. Getting
+the horizon line right is what keeps defects measurable.
+
+## Reports
+
+Every session can produce an inspection report two ways:
+- **Build Report** — deterministic, on-device, no key and no network.
+- **Write with AI** — same facts, nicer prose, via OpenRouter. Needs an API
+  key saved in Settings (stored in the Keychain, never in code).
+
+Both are validated against the session payload so no number appears that
+isn't in the data. Sessions also export to GeoJSON + CSV from the detail
+screen's ⋯ menu.
+
+## Tests
+
+Run on the Mac, no device needed:
+
+```bash
+./scripts/test_pipeline.sh      # geometry + session processing regressions
+./scripts/test_swift_report.sh  # Swift/Python report parity, validator, keychain
+```
