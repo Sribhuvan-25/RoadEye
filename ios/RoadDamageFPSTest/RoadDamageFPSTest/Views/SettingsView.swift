@@ -32,6 +32,8 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Text(String(format: "Horizon at %.0f%% down the frame", settings.horizonFraction * 100))
                     .font(.caption).foregroundStyle(.secondary)
+                Text("Defects near or above this line cannot be measured — the geometry becomes unreliable there, so those are reported without a size rather than with a wrong one.")
+                    .font(.caption2).foregroundStyle(.secondary)
             }
 
             Section("Inspection report") {
