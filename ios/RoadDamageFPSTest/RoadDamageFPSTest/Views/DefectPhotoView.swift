@@ -33,6 +33,10 @@ struct DefectPhotoView: View {
 
             VStack {
                 HStack {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .padding(.leading)
                     Spacer()
                     Button("Done") { dismiss() }
                         .foregroundStyle(.white)

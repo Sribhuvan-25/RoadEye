@@ -28,6 +28,21 @@ struct BoxDimensions {
 enum Geometry {
     static let iphoneMainHFOVDeg = 68.0
 
+    /// Rays close to the horizon have a near-zero denominator, so a pixel one
+    /// row below it maps hundreds of metres out. Anything past this range is
+    /// noise, not a measurement, so it is rejected instead of reported.
+    static let maxGroundRangeM = 30.0
+
+    /// Nothing on the road plane is plausibly longer than this for a single
+    /// defect; a larger result means the geometry broke down. Cracks can be
+    /// genuinely long, so extent alone is a loose bound.
+    static let maxDefectExtentM = 15.0
+
+    /// Area is the tighter discriminator: a single defect spanning more than
+    /// this is a projection artefact (box grazing the horizon), not a real
+    /// measurement. Keeps a long thin crack while rejecting blown-up boxes.
+    static let maxDefectAreaM2 = 12.0
+
     static func intrinsicsFromFOV(
         imageWidth: Int, imageHeight: Int, hfovDeg: Double = iphoneMainHFOVDeg
     ) -> (fx: Double, fy: Double, cx: Double, cy: Double) {
@@ -57,7 +72,13 @@ enum Geometry {
         let denom = dy * c + dz * s
         if denom <= 1e-9 { return nil }
         let t = cam.heightM / denom
-        return (t * dx, t * (-dy * s + dz * c))
+        let p = (x: t * dx, y: t * (-dy * s + dz * c))
+        // Reject rays that graze the horizon: the projection is numerically
+        // unstable there and yields absurd distances.
+        guard p.y.isFinite, p.x.isFinite,
+              p.y > 0, (p.x * p.x + p.y * p.y).squareRoot() <= maxGroundRangeM
+        else { return nil }
+        return p
     }
 
     /// Convert a pixel bbox (x1,y1,x2,y2) to real-world size on the road plane.
@@ -76,6 +97,13 @@ enum Geometry {
         let length = (dist(bl, tl) + dist(br, tr)) / 2
         let nearMid = ((bl.x + br.x) / 2, (bl.y + br.y) / 2)
         let distance = (nearMid.0 * nearMid.0 + nearMid.1 * nearMid.1).squareRoot()
+        // A defect larger than a bus means the projection degenerated (box
+        // touching the horizon); report nothing rather than a bogus number.
+        guard width.isFinite, length.isFinite,
+              width > 0, length > 0,
+              width <= maxDefectExtentM, length <= maxDefectExtentM,
+              width * length <= maxDefectAreaM2
+        else { return nil }
         return BoxDimensions(widthM: width, lengthM: length,
                              areaM2: width * length, distanceM: distance)
     }

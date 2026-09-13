@@ -15,6 +15,16 @@ final class CameraFPSController: NSObject, ObservableObject {
     @Published var detectionCount: Int = 0
     @Published var statusText: String = "Starting..."
     @Published var hasCameraFeed: Bool = false
+    /// Latest detections in normalised view space (origin top-left) so the UI
+    /// can draw boxes over the preview without knowing pixel dimensions.
+    @Published var liveBoxes: [LiveBox] = []
+
+    struct LiveBox: Identifiable {
+        let id = UUID()
+        let rect: CGRect      // normalised, origin top-left
+        let label: String
+        let confidence: Double
+    }
 
     let session = AVCaptureSession()
     let movieOutput = AVCaptureMovieFileOutput()
@@ -24,10 +34,22 @@ final class CameraFPSController: NSObject, ObservableObject {
     private var visionRequest: VNCoreMLRequest?
     private var latestFrame: UIImage?
     private var frameSize: CGSize = .zero
+    /// Reused across frames; allocating a CIContext per frame is costly.
+    private let ciContext = CIContext()
 
     // FPS bookkeeping
     private var frameTimestamps: [CFTimeInterval] = []
     private var sessionStart: CFTimeInterval = 0
+
+    /// Clock origin the collector stamps detections against. SessionRecorder
+    /// sets this to the same instant it starts GPS logging, so detection and
+    /// GPS timelines share an origin and interpolation lines up. Without it
+    /// detections were stamped from app launch while GPS started at Record,
+    /// so every defect resolved to the same clamped fix.
+    private var recordingClockStart: CFTimeInterval?
+
+    func beginRecordingClock(at start: CFTimeInterval) { recordingClockStart = start }
+    func endRecordingClock() { recordingClockStart = nil }
     private var totalFramesProcessed: Int = 0
     private var isProcessing = false
 
@@ -142,13 +164,25 @@ final class CameraFPSController: NSObject, ObservableObject {
         let elapsed = now - sessionStart
 
         if let collector = collector, collector.active, frameSize != .zero {
-            feedCollector(observations, collector: collector, elapsed: elapsed)
+            let stamp = recordingClockStart.map { now - $0 } ?? elapsed
+            feedCollector(observations, collector: collector, elapsed: stamp)
+        }
+
+        let boxes: [LiveBox] = observations.compactMap { o in
+            guard let label = o.labels.first else { return nil }
+            let bb = o.boundingBox   // normalised, origin bottom-left
+            return LiveBox(
+                rect: CGRect(x: bb.minX, y: 1 - bb.maxY,
+                             width: bb.width, height: bb.height),
+                label: label.identifier,
+                confidence: Double(o.confidence))
         }
 
         DispatchQueue.main.async {
             self.currentFPS = Double(self.frameTimestamps.count) / 2.0
             self.averageFPS = elapsed > 0 ? Double(self.totalFramesProcessed) / elapsed : 0
             self.detectionCount = count
+            self.liveBoxes = boxes
             self.statusText = "Running"
         }
     }
@@ -173,6 +207,17 @@ final class CameraFPSController: NSObject, ObservableObject {
         collector.add(timestamp: elapsed, classes: classes,
                       confidences: confs, boxes: boxes, frame: latestFrame)
     }
+
+    /// Redraw so the pixel buffer matches the displayed orientation. Vision
+    /// boxes and crops are both in this upright space.
+    private func uprighted(_ image: UIImage) -> UIImage {
+        if image.imageOrientation == .up { return image }
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+    }
 }
 
 extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -187,11 +232,14 @@ extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         if let collector = collector, collector.active {
             let ci = CIImage(cvPixelBuffer: pixelBuffer)
-            let ctx = CIContext()
-            if let cg = ctx.createCGImage(ci, from: ci.extent) {
+            if let cg = ciContext.createCGImage(ci, from: ci.extent) {
+                // Bake the .right rotation into the pixels so the crop boxes
+                // (computed in this same upright space) line up with the image
+                // they are cut from. A UIImage carrying only an orientation
+                // flag has an unrotated cgImage, so cropping it misaligned.
                 let img = UIImage(cgImage: cg, scale: 1, orientation: .right)
-                latestFrame = img
-                frameSize = img.size
+                latestFrame = uprighted(img)
+                frameSize = latestFrame?.size ?? img.size
             }
         }
 

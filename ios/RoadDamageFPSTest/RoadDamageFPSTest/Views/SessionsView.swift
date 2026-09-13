@@ -57,10 +57,18 @@ struct SessionDetailView: View {
                     if let d = r.dimensions {
                         Text(String(format: "%.2f × %.2f m · %.2f m²", d.widthM, d.lengthM, d.areaM2))
                             .font(.subheadline)
+                        Text(String(format: "%.1f m away", d.distanceM))
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Size not measurable")
+                            .font(.subheadline).foregroundStyle(.orange)
                     }
                     if let loc = r.location {
                         Text(String(format: "%.5f, %.5f", loc.lat, loc.lon))
                             .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("No GPS fix")
+                            .font(.caption).foregroundStyle(.orange)
                     }
                     Text(String(format: "conf %.0f%%", r.confidence * 100))
                         .font(.caption2).foregroundStyle(.secondary)

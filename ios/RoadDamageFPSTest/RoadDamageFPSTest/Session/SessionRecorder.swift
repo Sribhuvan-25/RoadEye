@@ -40,6 +40,7 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
         startEpoch = Date().timeIntervalSince1970
         location.startSession(at: startTime)
         collector.start()
+        camera.beginRecordingClock(at: startTime)
         camera.collector = collector
         camera.movieOutput.startRecording(to: dir.appendingPathComponent("video.mov"),
                                           recordingDelegate: self)
@@ -58,6 +59,7 @@ final class SessionRecorder: NSObject, ObservableObject, AVCaptureFileOutputReco
         location.stopSession()
         collector.stop()
         camera.collector = nil
+        camera.endRecordingClock()
         timer?.invalidate()
         isRecording = false
         let duration = CACurrentMediaTime() - startTime

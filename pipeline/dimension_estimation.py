@@ -50,6 +50,21 @@ class BoxDimensions:
     distance_m: float    # ground distance from camera to the near edge
 
 
+# Rays close to the horizon have a near-zero denominator, so a pixel one row
+# below it maps hundreds of meters out. Past this range it is noise, not a
+# measurement, so it is rejected rather than reported.
+MAX_GROUND_RANGE_M = 30.0
+
+# Nothing on the road plane is plausibly longer than this for one defect; a
+# larger result means the projection degenerated. Cracks can be genuinely
+# long, so extent alone is a loose bound.
+MAX_DEFECT_EXTENT_M = 15.0
+
+# Area is the tighter discriminator: a single defect spanning more than this
+# is a projection artefact (box grazing the horizon), not a real measurement.
+MAX_DEFECT_AREA_M2 = 12.0
+
+
 def pixel_to_ground(cam: CameraModel, u: float, v: float) -> Optional[tuple]:
     """Map an image pixel to its (X, Y) ground-plane point in meters.
 
@@ -71,6 +86,10 @@ def pixel_to_ground(cam: CameraModel, u: float, v: float) -> Optional[tuple]:
     t = cam.height_m / (dy * c + dz * s)  # = -h / ray_z, positive here
     ground_x = t * dx
     ground_y = t * (-dy * s + dz * c)
+    if not (math.isfinite(ground_x) and math.isfinite(ground_y)):
+        return None
+    if ground_y <= 0 or math.hypot(ground_x, ground_y) > MAX_GROUND_RANGE_M:
+        return None
     return (ground_x, ground_y)
 
 
@@ -111,6 +130,11 @@ def estimate_bbox_dimensions(
     length_m = (math.dist(bl, tl) + math.dist(br, tr)) / 2
     near_mid = ((bl[0] + br[0]) / 2, (bl[1] + br[1]) / 2)
     distance_m = math.hypot(*near_mid)
+
+    if not (0 < width_m <= MAX_DEFECT_EXTENT_M and 0 < length_m <= MAX_DEFECT_EXTENT_M):
+        return None
+    if width_m * length_m > MAX_DEFECT_AREA_M2:
+        return None
 
     return BoxDimensions(
         width_m=width_m,

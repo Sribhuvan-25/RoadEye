@@ -33,13 +33,21 @@ struct ReportView: View {
                         .font(.largeTitle).foregroundStyle(.secondary)
                     Text("No report yet for this session.")
                         .foregroundStyle(.secondary)
-                    if KeychainStore.load() == nil {
-                        Text("Save an OpenRouter API key in Settings first.")
-                            .font(.caption).foregroundStyle(.orange)
+
+                    Button("Build Report") { buildOffline() }
+                        .buttonStyle(.borderedProminent)
+                    Text("Generated on device from the measured defects.")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    if KeychainStore.load() != nil {
+                        Button("Write with AI") { Task { await generate() } }
+                            .buttonStyle(.bordered)
                     } else {
-                        Button("Generate Report") { Task { await generate() } }
-                            .buttonStyle(.borderedProminent)
+                        Text("Add an OpenRouter API key in Settings for an AI-written version.")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center).padding(.horizontal)
                     }
+
                     if let e = errorText {
                         Text(e).font(.caption).foregroundStyle(.red)
                             .multilineTextAlignment(.center).padding(.horizontal)
@@ -66,6 +74,17 @@ struct ReportView: View {
         .onAppear {
             reportText = try? String(contentsOf: reportURL, encoding: .utf8)
         }
+    }
+
+    /// Deterministic, on-device report. Always available -- no key, no network.
+    private func buildOffline() {
+        errorText = nil
+        let records = SessionStore.loadRecords(session.sessionID)
+        let text = OfflineReport.build(records: records, sessionID: session.sessionID,
+                                       startedEpoch: session.startedEpoch,
+                                       durationS: session.durationS)
+        try? text.write(to: reportURL, atomically: true, encoding: .utf8)
+        reportText = text
     }
 
     private func generate() async {

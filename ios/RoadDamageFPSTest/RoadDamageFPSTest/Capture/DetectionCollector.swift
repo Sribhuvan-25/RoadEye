@@ -61,12 +61,26 @@ final class DetectionCollector {
         queue.sync { (detections, bestCropByTrack, frameSize) }
     }
 
+    /// Cut the padded box out of the frame. The rect is clamped to the image
+    /// and floored to a minimum size so a box hugging an edge still yields a
+    /// usable crop instead of silently producing none -- a dropped crop leaves
+    /// the defect with no photo to review.
     private func crop(_ image: UIImage, _ box: CGRect) -> UIImage? {
         guard let cg = image.cgImage else { return nil }
+        let bounds = CGRect(x: 0, y: 0, width: cg.width, height: cg.height)
         let pad: CGFloat = 0.15
-        let r = box.insetBy(dx: -box.width * pad, dy: -box.height * pad)
-            .intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
-        guard let c = cg.cropping(to: r) else { return nil }
+        var r = box.insetBy(dx: -box.width * pad, dy: -box.height * pad)
+            .intersection(bounds)
+        guard !r.isNull, !r.isEmpty else { return nil }
+        let minSide: CGFloat = 8
+        if r.width < minSide || r.height < minSide {
+            r = CGRect(x: r.midX - max(r.width, minSide) / 2,
+                       y: r.midY - max(r.height, minSide) / 2,
+                       width: max(r.width, minSide),
+                       height: max(r.height, minSide)).intersection(bounds)
+            guard !r.isNull, !r.isEmpty else { return nil }
+        }
+        guard let c = cg.cropping(to: r.integral) else { return nil }
         return UIImage(cgImage: c)
     }
 }

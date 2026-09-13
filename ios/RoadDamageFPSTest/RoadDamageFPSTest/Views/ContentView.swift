@@ -19,7 +19,10 @@ struct ContentView: View {
                 CameraPreviewView(session: controller.session)
                     .ignoresSafeArea()
 
-                if !controller.hasCameraFeed {
+                if controller.hasCameraFeed {
+                    DetectionOverlay(boxes: controller.liveBoxes)
+                        .ignoresSafeArea()
+                } else {
                     noCameraPlaceholder
                 }
 
