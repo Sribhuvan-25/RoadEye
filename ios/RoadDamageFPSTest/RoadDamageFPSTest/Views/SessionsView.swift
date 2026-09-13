@@ -14,11 +14,7 @@ struct SessionsView: View {
             }
             ForEach(sessions) { s in
                 NavigationLink(destination: SessionDetailView(session: s)) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(dateString(s.startedEpoch)).font(.headline)
-                        Text("\(s.defectCount) defects · \(Int(s.durationS))s")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
+                    SessionRow(session: s)
                 }
             }
             .onDelete { idx in
@@ -41,6 +37,7 @@ struct SessionDetailView: View {
     let session: SessionSummary
     @State private var records: [DefectRecord] = []
     @State private var selection: PhotoSelection?
+    @State private var exportURLs: [URL] = []
 
     private struct PhotoSelection: Identifiable {
         let record: DefectRecord
@@ -77,7 +74,28 @@ struct SessionDetailView: View {
         }
         .navigationTitle("\(records.count) defects")
         .toolbar {
-            NavigationLink("Report") { ReportView(session: session) }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink("Report") { ReportView(session: session) }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        exportURLs = SessionExport.writeFiles(
+                            sessionID: session.sessionID, records: records)
+                    } label: {
+                        Label("Export GeoJSON + CSV", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(records.isEmpty)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { !exportURLs.isEmpty },
+            set: { if !$0 { exportURLs = [] } })
+        ) {
+            ShareSheet(items: exportURLs)
         }
         .onAppear { records = SessionStore.loadRecords(session.sessionID) }
         .fullScreenCover(item: $selection) { sel in
@@ -121,4 +139,63 @@ struct SessionDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
+}
+
+/// One row in Past Sessions: when it was recorded, how many defects, and the
+/// severity mix so a drive worth reviewing stands out without opening it.
+private struct SessionRow: View {
+    let session: SessionSummary
+    @State private var counts: (severe: Int, moderate: Int, low: Int) = (0, 0, 0)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(dateString(session.startedEpoch)).font(.headline)
+            Text("\(session.defectCount) defects · \(Int(session.durationS))s")
+                .font(.subheadline).foregroundStyle(.secondary)
+            if session.defectCount > 0 {
+                HStack(spacing: 6) {
+                    if counts.severe > 0 { pill("\(counts.severe) severe", .red) }
+                    if counts.moderate > 0 { pill("\(counts.moderate) moderate", .orange) }
+                    if counts.low > 0 { pill("\(counts.low) low", .secondary) }
+                }
+            }
+        }
+        .onAppear(perform: loadCounts)
+    }
+
+    private func pill(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.caption2.bold())
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(color.opacity(0.15), in: Capsule())
+            .foregroundStyle(color)
+    }
+
+    private func loadCounts() {
+        let records = SessionStore.loadRecords(session.sessionID)
+        var c = (severe: 0, moderate: 0, low: 0)
+        for r in records {
+            switch Severity.score(className: r.className, dimensions: r.dimensions).level {
+            case "severe": c.severe += 1
+            case "moderate": c.moderate += 1
+            default: c.low += 1
+            }
+        }
+        counts = c
+    }
+
+    private func dateString(_ epoch: Double) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .medium; f.timeStyle = .short
+        return f.string(from: Date(timeIntervalSince1970: epoch))
+    }
+}
+
+/// UIKit share sheet so exported files can go to Files, Mail, AirDrop, etc.
+private struct ShareSheet: UIViewControllerRepresentable {
+    let items: [URL]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
