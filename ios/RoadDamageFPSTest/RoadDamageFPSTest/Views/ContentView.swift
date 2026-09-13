@@ -19,6 +19,10 @@ struct ContentView: View {
                 CameraPreviewView(session: controller.session)
                     .ignoresSafeArea()
 
+                if !controller.hasCameraFeed {
+                    noCameraPlaceholder
+                }
+
                 statusBar
 
                 VStack {
@@ -35,6 +39,19 @@ struct ContentView: View {
             .onAppear { controller.start() }
             .onDisappear { controller.stop() }
         }
+    }
+
+    private var noCameraPlaceholder: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "camera.metering.unknown")
+                .font(.system(size: 44))
+            Text(controller.statusText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .foregroundStyle(.white.opacity(0.6))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     private var statusBar: some View {

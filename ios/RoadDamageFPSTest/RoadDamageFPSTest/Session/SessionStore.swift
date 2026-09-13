@@ -23,15 +23,25 @@ enum SessionStore {
         records: [DefectRecord], crops: [Int: UIImage]
     ) {
         let dir = sessionDir(id)
+        var writtenTrackIDs = Set<Int>()
         for (trackID, image) in crops {
             guard let rec = records.first(where: { $0.trackID == trackID }),
                   let name = rec.cropFilename,
                   let data = image.jpegData(compressionQuality: 0.85) else { continue }
             try? data.write(to: dir.appendingPathComponent(name))
+            writtenTrackIDs.insert(trackID)
+        }
+        // A crop can go missing (async capture race, or a degenerate box after
+        // frame-boundary clamping) even though the track itself was detected.
+        // Clear the filename rather than leave defects.json pointing at a file
+        // that was never written.
+        var savedRecords = records
+        for i in savedRecords.indices where !writtenTrackIDs.contains(savedRecords[i].trackID) {
+            savedRecords[i].cropFilename = nil
         }
         let enc = JSONEncoder()
         enc.outputFormatting = .prettyPrinted
-        if let d = try? enc.encode(records) {
+        if let d = try? enc.encode(savedRecords) {
             try? d.write(to: dir.appendingPathComponent("defects.json"))
         }
         let summary = SessionSummary(sessionID: id, startedEpoch: startedEpoch,

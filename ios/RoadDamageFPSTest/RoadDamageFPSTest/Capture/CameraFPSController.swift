@@ -14,6 +14,7 @@ final class CameraFPSController: NSObject, ObservableObject {
     @Published var averageFPS: Double = 0
     @Published var detectionCount: Int = 0
     @Published var statusText: String = "Starting..."
+    @Published var hasCameraFeed: Bool = false
 
     let session = AVCaptureSession()
     let movieOutput = AVCaptureMovieFileOutput()
@@ -86,6 +87,7 @@ final class CameraFPSController: NSObject, ObservableObject {
             return
         }
         session.addInput(input)
+        hasCameraFeed = true
 
         let output = AVCaptureVideoDataOutput()
         output.setSampleBufferDelegate(self, queue: videoQueue)
