@@ -66,6 +66,23 @@ Both are validated against the session payload so no number appears that
 isn't in the data. Sessions also export to GeoJSON + CSV from the detail
 screen's ⋯ menu.
 
+## Testing without a phone
+
+The Simulator has no camera, so the app falls back to replaying a bundled
+dashcam clip (`Resources/replay_drive.mp4`) through the *same* detect →
+track → crop → measure → save path the camera uses. Combined with simulated
+GPS, a full drive can be exercised locally:
+
+```bash
+# Move the simulated location along a road while the app records
+xcrun simctl location <SIM_UDID> start --speed=8 --interval=1 \
+    33.935300,-84.345100 33.935300,-84.344000 33.935300,-84.342900
+```
+
+Launch the app, hit record, drive for a while, stop — a real session is saved
+with crops, dimensions and a varying GPS track. This is how the capture path
+was verified before any road test.
+
 ## Tests
 
 Run on the Mac, no device needed:
