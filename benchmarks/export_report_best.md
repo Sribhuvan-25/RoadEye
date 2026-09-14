@@ -37,3 +37,24 @@ tensor that crashes `VNCoreMLRequest`).
 - Re-test ANE path after next Xcode/iOS update.
 - Measure power draw / thermals over a longer (30+ min) run before relying
   on continuous-drive capture.
+
+## Model selection revisited (2026-09-14)
+
+The earlier "RDD2022 Czech was a wash" conclusion was measured at the
+detector's default thresholds. Re-measured at the thresholds the app actually
+ships with (NMS IoU 0.45, conf 0.25–0.35), on the **target-domain** holdout:
+
+| model | Pothole mAP50 | Crack mAP50 | Manhole mAP50 |
+|---|---|---|---|
+| kaggle_yolo11n_100ep | 0.335 | 0.303 | 0.749 |
+| **kaggle_yolo11n_100ep_merged** | **0.415** | **0.414** | **0.825** |
+
+On 120 sampled frames of real dashcam footage the merged model produces
+**132 detections vs 233** (-43%) at the same thresholds, and in an end-to-end
+in-app recording of the same clip: **12 defects vs 26, duplicate-label
+moments 8 → 2**. `kaggle_yolo11n_100ep_merged` is the deployed model.
+
+### Capacity is not the bottleneck — data is
+`yolo11s` fine-tuned on the same 1,708-image split reached mAP50 **0.278**
+versus 0.55 for `yolo11n`: the larger model overfits. More/att better-matched
+training data is the lever, not a bigger backbone.
