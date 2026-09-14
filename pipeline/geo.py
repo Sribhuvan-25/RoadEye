@@ -118,12 +118,17 @@ def make_gps_lookup(
     return lookup
 
 
-def dedupe_by_location(records: list, radius_m: float = 8.0) -> list:
+def dedupe_by_location(records: list, radius_m: float = 8.0,
+                       min_revisit_gap_s: float = 2.0) -> list:
     """Merge same-class records whose locations are within radius_m.
 
     Keeps the highest-confidence record of each cluster and drops the rest --
     the same physical defect seen twice (repeated pass, or a broken track)
     collapses to one. Records without a location are passed through untouched.
+
+    Records seen at nearly the same moment are left alone: two defects beside
+    each other interpolate to the same fix, so distance cannot separate them.
+    Only a genuine revisit -- same place, different time -- is a duplicate.
     """
     kept, dropped = [], set()
     for i, r in enumerate(records):
@@ -135,6 +140,8 @@ def dedupe_by_location(records: list, radius_m: float = 8.0) -> list:
         for j in range(i + 1, len(records)):
             o = records[j]
             if j in dropped or o.cls_name != r.cls_name or not getattr(o, "location", None):
+                continue
+            if abs(o.first_seen_s - r.first_seen_s) < min_revisit_gap_s:
                 continue
             d = haversine_m(
                 r.location["lat"], r.location["lon"],

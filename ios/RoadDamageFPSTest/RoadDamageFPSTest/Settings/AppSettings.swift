@@ -20,12 +20,19 @@ final class AppSettings: ObservableObject {
     @Published var keepVideo: Bool {
         didSet { defaults.set(keepVideo, forKey: Keys.keepVideo) }
     }
+    /// Detections below this confidence are ignored. The detector's own
+    /// default is a research threshold that surfaces a lot of marginal boxes;
+    /// a higher floor trades a few real defects for a much cleaner list.
+    @Published var minConfidence: Double {
+        didSet { defaults.set(minConfidence, forKey: Keys.minConfidence) }
+    }
 
     private let defaults = UserDefaults.standard
     private enum Keys {
         static let height = "mountHeightM"
         static let horizon = "horizonFraction"
         static let keepVideo = "keepVideo"
+        static let minConfidence = "minConfidence"
     }
 
     private init() {
@@ -34,5 +41,6 @@ final class AppSettings: ObservableObject {
         mountHeightM = h ?? 1.3
         horizonFraction = hz ?? 0.45
         keepVideo = defaults.object(forKey: Keys.keepVideo) as? Bool ?? false
+        minConfidence = defaults.object(forKey: Keys.minConfidence) as? Double ?? 0.50
     }
 }

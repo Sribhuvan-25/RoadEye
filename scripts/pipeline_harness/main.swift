@@ -57,5 +57,46 @@ if records.count == 2, let a = records[0].location, let b = records[1].location 
 check("all measured records are plausible",
       records.compactMap(\.dimensions).allSatisfy { $0.areaM2 <= Geometry.maxDefectAreaM2 })
 
+print("[3] duplicate labels on one defect")
+// The detector commonly fires two classes on the same patch of broken road.
+// Those arrive as separate tracks, same moment, overlapping boxes.
+let sharedBox = CGRect(x: 300, y: 800, width: 120, height: 90)
+var dupes: [FrameDetection] = []
+for i in 0..<10 {
+    let t = Double(i) / 30.0
+    dupes.append(FrameDetection(timestamp: t, trackID: 1, className: "Pothole",
+                                confidence: 0.80, bbox: sharedBox))
+    dupes.append(FrameDetection(timestamp: t, trackID: 2, className: "Crack",
+                                confidence: 0.55,
+                                bbox: sharedBox.insetBy(dx: -6, dy: -4)))
+}
+// A genuinely separate defect elsewhere in the frame must survive.
+for i in 0..<10 {
+    dupes.append(FrameDetection(timestamp: Double(i) / 30.0, trackID: 3,
+                                className: "Pothole", confidence: 0.7,
+                                bbox: CGRect(x: 60, y: 950, width: 80, height: 60)))
+}
+let deduped = SessionProcessor.buildRecords(detections: dupes, gps: gps, camera: cam)
+check("overlapping Pothole+Crack merged into one", deduped.count == 2)
+check("the more confident label wins",
+      deduped.contains { $0.className == "Pothole" && $0.confidence >= 0.79 })
+check("a separate defect is not swallowed",
+      deduped.filter { $0.className == "Pothole" }.count == 2)
+
+print("[4] a small box inside a large one is the same defect")
+let wide = CGRect(x: 280, y: 780, width: 260, height: 130)   // Crack
+let small = CGRect(x: 330, y: 810, width: 70, height: 60)    // Pothole inside it
+var nested: [FrameDetection] = []
+for i in 0..<10 {
+    let t = Double(i) / 30.0
+    nested.append(FrameDetection(timestamp: t, trackID: 1, className: "Crack",
+                                 confidence: 0.60, bbox: wide))
+    nested.append(FrameDetection(timestamp: t, trackID: 2, className: "Pothole",
+                                 confidence: 0.75, bbox: small))
+}
+let nestedOut = SessionProcessor.buildRecords(detections: nested, gps: gps, camera: cam)
+check("contained box merged despite low IoU", nestedOut.count == 1)
+check("higher-confidence label kept", nestedOut.first?.className == "Pothole")
+
 print(failures == 0 ? "\nALL PIPELINE CHECKS PASSED" : "\n\(failures) CHECK(S) FAILED")
 exit(failures == 0 ? 0 : 1)

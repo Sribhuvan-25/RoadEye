@@ -1,3 +1,4 @@
+import CoreGraphics
 import CoreLocation
 import Foundation
 
@@ -28,6 +29,7 @@ enum SessionProcessor {
         for d in detections { byTrack[d.trackID, default: []].append(d) }
 
         var records: [DefectRecord] = []
+        var bestBoxes: [Int: CGRect] = [:]
         for (trackID, dets) in byTrack {
             guard dets.count >= minTrackLen else { continue }
             let sorted = dets.sorted { $0.timestamp < $1.timestamp }
@@ -49,17 +51,72 @@ enum SessionProcessor {
                 dimensions: camera.flatMap { measure($0, best.bbox) }
             )
             record.cropFilename = "defect_\(trackID)_\(majorityClass).jpg"
+            bestBoxes[trackID] = best.bbox
             records.append(record)
         }
         let ordered = records.sorted { $0.firstSeenS < $1.firstSeenS }
-        return dedupeByLocation(ordered, radiusM: 8.0)
+        let merged = mergeOverlappingClasses(ordered, boxes: bestBoxes)
+        return dedupeByLocation(merged, radiusM: 8.0)
+    }
+
+    /// Collapse records that describe the same physical defect under
+    /// different labels. The detector often fires Pothole and Crack on one
+    /// patch of broken road; those arrive as separate tracks seen at the same
+    /// moment with overlapping boxes. Keep the more confident label rather
+    /// than reporting one defect twice.
+    static func mergeOverlappingClasses(_ records: [DefectRecord],
+                                        boxes: [Int: CGRect],
+                                        iouThreshold: Double = 0.35,
+                                        withinSeconds: TimeInterval = 0.75) -> [DefectRecord] {
+        var kept: [DefectRecord] = []
+        var dropped = Set<Int>()
+        for i in records.indices where !dropped.contains(i) {
+            var best = records[i]
+            for j in (i + 1)..<records.count where !dropped.contains(j) {
+                let o = records[j]
+                guard o.className != best.className,
+                      abs(o.firstSeenS - best.firstSeenS) <= withinSeconds,
+                      let a = boxes[best.trackID], let b = boxes[o.trackID],
+                      overlaps(a, b, iouThreshold: iouThreshold) else { continue }
+                dropped.insert(j)
+                if o.confidence > best.confidence { best = o }
+            }
+            kept.append(best)
+        }
+        return kept
+    }
+
+    /// Two boxes describe the same feature if they overlap substantially by
+    /// IoU, or if one largely sits inside the other -- a wide Crack box often
+    /// contains a small Pothole box, which IoU alone scores too low to catch.
+    private static func overlaps(_ a: CGRect, _ b: CGRect, iouThreshold: Double) -> Bool {
+        if iou(a, b) >= iouThreshold { return true }
+        let inter = a.intersection(b)
+        guard !inter.isNull, !inter.isEmpty else { return false }
+        let ia = Double(inter.width * inter.height)
+        let smaller = min(Double(a.width * a.height), Double(b.width * b.height))
+        return smaller > 0 && ia / smaller >= 0.6
+    }
+
+    private static func iou(_ a: CGRect, _ b: CGRect) -> Double {
+        let inter = a.intersection(b)
+        guard !inter.isNull, !inter.isEmpty else { return 0 }
+        let ia = Double(inter.width * inter.height)
+        let ua = Double(a.width * a.height + b.width * b.height) - ia
+        return ua > 0 ? ia / ua : 0
     }
 
     /// Merge same-class records within radiusM metres -- collapses a defect
     /// seen on a second pass or split across a tracking gap into one, keeping
     /// the highest-confidence record. Unlocated records pass through. Mirrors
     /// dedupe_by_location in pipeline/geo.py.
-    static func dedupeByLocation(_ records: [DefectRecord], radiusM: Double) -> [DefectRecord] {
+    ///
+    /// Records seen at nearly the same moment are left alone: two defects
+    /// beside each other interpolate to the same GPS fix, so distance cannot
+    /// tell them apart. Only a genuine revisit -- the same place at a
+    /// different time -- is a duplicate.
+    static func dedupeByLocation(_ records: [DefectRecord], radiusM: Double,
+                                 minRevisitGapS: TimeInterval = 2.0) -> [DefectRecord] {
         var kept: [DefectRecord] = []
         var dropped = Set<Int>()
         for i in records.indices {
@@ -71,6 +128,7 @@ enum SessionProcessor {
                 let o = records[j]
                 guard !dropped.contains(j), o.className == r.className,
                       let oloc = o.location else { continue }
+                guard abs(o.firstSeenS - r.firstSeenS) >= minRevisitGapS else { continue }
                 if haversine(rloc.lat, rloc.lon, oloc.lat, oloc.lon) <= radiusM {
                     dropped.insert(j)
                     if o.confidence > best.confidence { best = o }

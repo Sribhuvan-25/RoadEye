@@ -36,6 +36,18 @@ struct SettingsView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             }
 
+            Section("Detection") {
+                HStack {
+                    Text("Minimum confidence")
+                    Spacer()
+                    Text(String(format: "%.0f%%", settings.minConfidence * 100))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $settings.minConfidence, in: 0.25...0.85, step: 0.05)
+                Text("Detections below this are ignored. Raise it if the defect list is noisy; lower it if real damage is being missed.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Recording") {
                 Toggle("Keep drive video", isOn: $settings.keepVideo)
                 Text("Off by default. Detection, measurement and photos all work without it; the raw video is only worth keeping if you want to re-process the drive later. A long drive can be several gigabytes.")

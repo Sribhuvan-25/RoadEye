@@ -204,8 +204,9 @@ final class CameraFPSController: NSObject, ObservableObject {
             feedCollector(observations, collector: collector, elapsed: stamp)
         }
 
+        let confFloor = AppSettings.shared.minConfidence
         let boxes: [LiveBox] = observations.compactMap { o in
-            guard let label = o.labels.first else { return nil }
+            guard let label = o.labels.first, Double(o.confidence) >= confFloor else { return nil }
             let bb = o.boundingBox   // normalised, origin bottom-left
             return LiveBox(
                 rect: CGRect(x: bb.minX, y: 1 - bb.maxY,
@@ -217,7 +218,7 @@ final class CameraFPSController: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.currentFPS = Double(self.frameTimestamps.count) / 2.0
             self.averageFPS = elapsed > 0 ? Double(self.totalFramesProcessed) / elapsed : 0
-            self.detectionCount = count
+            self.detectionCount = boxes.count
             self.liveBoxes = boxes
             self.statusText = "Running"
         }
@@ -231,8 +232,9 @@ final class CameraFPSController: NSObject, ObservableObject {
     ) {
         let w = frameSize.width, h = frameSize.height
         var classes: [String] = [], confs: [Double] = [], boxes: [CGRect] = []
+        let floor = AppSettings.shared.minConfidence
         for o in obs {
-            guard let label = o.labels.first else { continue }
+            guard let label = o.labels.first, Double(o.confidence) >= floor else { continue }
             let bb = o.boundingBox   // normalized, origin bottom-left
             let rect = CGRect(x: bb.minX * w, y: (1 - bb.maxY) * h,
                               width: bb.width * w, height: bb.height * h)
