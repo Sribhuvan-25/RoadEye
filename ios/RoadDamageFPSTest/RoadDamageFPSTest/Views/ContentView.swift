@@ -16,22 +16,28 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                if let frame = controller.replayFrame {
-                    Color.black.ignoresSafeArea()
-                    Image(uiImage: frame)
-                        .resizable().scaledToFit()
-                        .ignoresSafeArea()
-                } else {
-                    CameraPreviewView(session: controller.session)
-                        .ignoresSafeArea()
+                // Frame and overlay share one full-screen container so the
+                // boxes land on the image rather than on the letterbox bars.
+                ZStack {
+                    if let frame = controller.replayFrame {
+                        Color.black
+                        Image(uiImage: frame)
+                            .resizable().scaledToFit()
+                    } else {
+                        CameraPreviewView(session: controller.session)
+                    }
+                    if controller.hasCameraFeed {
+                        DetectionOverlay(
+                            boxes: controller.liveBoxes,
+                            sourceAspect: controller.replayFrame.map {
+                                $0.size.width / $0.size.height
+                            })
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
 
-                if controller.hasCameraFeed {
-                    DetectionOverlay(
-                        boxes: controller.liveBoxes,
-                        sourceAspect: controller.replayFrame.map { $0.size.width / $0.size.height })
-                        .ignoresSafeArea()
-                } else {
+                if !controller.hasCameraFeed {
                     noCameraPlaceholder
                 }
 
