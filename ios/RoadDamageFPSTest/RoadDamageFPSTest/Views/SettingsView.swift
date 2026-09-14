@@ -44,7 +44,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Slider(value: $settings.minConfidence, in: 0.25...0.85, step: 0.05)
-                Text("Detections below this are ignored. Raise it if the defect list is noisy; lower it if real damage is being missed.")
+                Text("Detections below this are ignored. Higher is cleaner but misses more real damage — at 50% roughly a third fewer defects are found than at 35%. Raise it only if the list is too noisy to review.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

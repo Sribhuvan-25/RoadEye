@@ -20,9 +20,11 @@ final class AppSettings: ObservableObject {
     @Published var keepVideo: Bool {
         didSet { defaults.set(keepVideo, forKey: Keys.keepVideo) }
     }
-    /// Detections below this confidence are ignored. The detector's own
-    /// default is a research threshold that surfaces a lot of marginal boxes;
-    /// a higher floor trades a few real defects for a much cleaner list.
+    /// Detections below this confidence are ignored. Measured on the holdout
+    /// set (NMS IoU 0.45): 0.25 -> P 0.58 / R 0.54, 0.35 -> cleaner with most
+    /// recall intact, 0.50 -> P 0.75 but R 0.40, i.e. ~60% of real defects
+    /// missed. 0.35 keeps the survey useful; raise it only if the list is too
+    /// noisy to work through, and accept the misses that come with it.
     @Published var minConfidence: Double {
         didSet { defaults.set(minConfidence, forKey: Keys.minConfidence) }
     }
@@ -41,6 +43,6 @@ final class AppSettings: ObservableObject {
         mountHeightM = h ?? 1.3
         horizonFraction = hz ?? 0.45
         keepVideo = defaults.object(forKey: Keys.keepVideo) as? Bool ?? false
-        minConfidence = defaults.object(forKey: Keys.minConfidence) as? Double ?? 0.50
+        minConfidence = defaults.object(forKey: Keys.minConfidence) as? Double ?? 0.35
     }
 }

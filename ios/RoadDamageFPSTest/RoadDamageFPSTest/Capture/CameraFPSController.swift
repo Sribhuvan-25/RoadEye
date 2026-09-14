@@ -74,10 +74,21 @@ final class CameraFPSController: NSObject, ObservableObject {
             config.computeUnits = .cpuOnly
             let model = try RoadDamageDetector(configuration: config)
             let vnModel = try VNCoreMLModel(for: model.model)
+            // The exported model takes its NMS thresholds as inputs. Its
+            // default IoU of 0.7 only suppresses boxes overlapping >70%, so
+            // two labels routinely survive on one defect; tighten it here so
+            // duplicates are removed inside the model rather than after.
+            vnModel.featureProvider = try? MLDictionaryFeatureProvider(dictionary: [
+                "iouThreshold": MLFeatureValue(double: 0.45),
+                "confidenceThreshold": MLFeatureValue(double: 0.25),
+            ])
             let request = VNCoreMLRequest(model: vnModel) { [weak self] request, error in
                 self?.handleResults(request: request, error: error)
             }
-            request.imageCropAndScaleOption = .scaleFill
+            // The model is 640x640 and was trained on letterboxed images.
+            // scaleFill squashes a 16:9 frame by ~1.8x horizontally, which the
+            // model never saw in training; fit preserves the aspect ratio.
+            request.imageCropAndScaleOption = .scaleFit
             self.visionRequest = request
             statusText = "Model loaded"
         } catch {
