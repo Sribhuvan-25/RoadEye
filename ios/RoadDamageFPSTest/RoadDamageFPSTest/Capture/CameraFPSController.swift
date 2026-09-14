@@ -36,6 +36,15 @@ final class CameraFPSController: NSObject, ObservableObject {
     private var frameSize: CGSize = .zero
     /// Reused across frames; allocating a CIContext per frame is costly.
     private let ciContext = CIContext()
+    /// Stands in for the camera when none exists (Simulator), replaying a
+    /// bundled clip through the same pipeline. Nil on real hardware.
+    private var replay: VideoReplaySource?
+    /// True when frames are coming from a clip rather than the camera, so the
+    /// UI can say so instead of implying a live feed.
+    @Published var isReplaying = false
+    /// Current replay frame, shown in place of the camera preview layer
+    /// (which stays black without a capture session).
+    @Published var replayFrame: UIImage?
 
     // FPS bookkeeping
     private var frameTimestamps: [CFTimeInterval] = []
@@ -104,8 +113,8 @@ final class CameraFPSController: NSObject, ObservableObject {
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
-            statusText = "Camera setup FAILED (no camera -- run on a physical iPhone, not the Simulator)"
             session.commitConfiguration()
+            startReplayFallback()
             return
         }
         session.addInput(input)
@@ -132,6 +141,32 @@ final class CameraFPSController: NSObject, ObservableObject {
         }
     }
 
+    /// With no camera, replay a bundled clip so the whole pipeline can still
+    /// be exercised locally. Falls back to the plain no-camera message when
+    /// no clip is bundled (release builds).
+    private func startReplayFallback() {
+        let noCamera = "Camera setup FAILED (no camera -- run on a physical iPhone, not the Simulator)"
+        guard let url = Bundle.main.url(forResource: "replay_drive", withExtension: "mp4") else {
+            statusText = noCamera
+            return
+        }
+        let source = VideoReplaySource(url: url) { [weak self] buffer in
+            self?.process(pixelBuffer: buffer, orientation: .up)
+        }
+        replay = source
+        source.start { [weak self] ok in
+            guard let self else { return }
+            if ok {
+                self.hasCameraFeed = true
+                self.isReplaying = true
+                self.statusText = "Replaying test clip (no camera)"
+            } else {
+                self.replay = nil
+                self.statusText = noCamera
+            }
+        }
+    }
+
     func start() {
         sessionStart = CACurrentMediaTime()
         totalFramesProcessed = 0
@@ -144,6 +179,7 @@ final class CameraFPSController: NSObject, ObservableObject {
     }
 
     func stop() {
+        replay?.stop()
         session.stopRunning()
     }
 
@@ -226,8 +262,14 @@ extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        guard !isProcessing, let request = visionRequest,
-              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        process(pixelBuffer: pixelBuffer, orientation: .right)
+    }
+
+    /// Shared by the live camera and the replay source so both exercise
+    /// identical detection, cropping and measurement code.
+    func process(pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) {
+        guard !isProcessing, let request = visionRequest else { return }
         isProcessing = true
 
         if let collector = collector, collector.active {
@@ -237,13 +279,22 @@ extension CameraFPSController: AVCaptureVideoDataOutputSampleBufferDelegate {
                 // (computed in this same upright space) line up with the image
                 // they are cut from. A UIImage carrying only an orientation
                 // flag has an unrotated cgImage, so cropping it misaligned.
-                let img = UIImage(cgImage: cg, scale: 1, orientation: .right)
+                let img = UIImage(cgImage: cg, scale: 1,
+                                  orientation: orientation == .up ? .up : .right)
                 latestFrame = uprighted(img)
                 frameSize = latestFrame?.size ?? img.size
             }
         }
 
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right)
+        if isReplaying {
+            let ci = CIImage(cvPixelBuffer: pixelBuffer)
+            if let cg = ciContext.createCGImage(ci, from: ci.extent) {
+                let shown = UIImage(cgImage: cg)
+                DispatchQueue.main.async { self.replayFrame = shown }
+            }
+        }
+
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation)
         do {
             try handler.perform([request])
         } catch {

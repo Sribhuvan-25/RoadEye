@@ -16,11 +16,20 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                CameraPreviewView(session: controller.session)
-                    .ignoresSafeArea()
+                if let frame = controller.replayFrame {
+                    Color.black.ignoresSafeArea()
+                    Image(uiImage: frame)
+                        .resizable().scaledToFit()
+                        .ignoresSafeArea()
+                } else {
+                    CameraPreviewView(session: controller.session)
+                        .ignoresSafeArea()
+                }
 
                 if controller.hasCameraFeed {
-                    DetectionOverlay(boxes: controller.liveBoxes)
+                    DetectionOverlay(
+                        boxes: controller.liveBoxes,
+                        sourceAspect: controller.replayFrame.map { $0.size.width / $0.size.height })
                         .ignoresSafeArea()
                 } else {
                     noCameraPlaceholder
